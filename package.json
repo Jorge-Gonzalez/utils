@@ -1,0 +1,22 @@
+{
+  "name": "utils",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jorge-Gonzalez/utils.git"
+  },
+  "packageManager": "yarn@3.1.1",
+  "scripts": {
+    "bench": "node ./bench/index.js"
+  },
+  "devDependencies": {
+    "assert": "^2.0.0",
+    "benchmark": "^2.1.4",
+    "chai": "^4.3.6",
+    "fast-check": "^3.0.0",
+    "mocha": "^10.0.0",
+    "testem": "^3.7.0"
+  }
+}

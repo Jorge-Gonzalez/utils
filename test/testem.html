@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+
+<head>
+  <title>Test'em</title>
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/mocha/2.3.4/mocha.css">
+  <script src="//cdnjs.cloudflare.com/ajax/libs/mocha/2.3.4/mocha.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chai/4.3.6/chai.js"
+    integrity="sha512-PvEZ0yuGDPXjFnOsHTg3kBsqUz68gczLETPFrjeyq74WEcNR10uAvltrSgXHEOHyj5L1P2CV7/2vaU5qe0xS1w=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>mocha.setup('bdd')</script>
+  <script src="/testem.js"></script>
+
+  <script type="module" src="./index.js"></script>
+  <script type="module" src="./aperture.js"></script>
+
+  <script src="../src/hello.js"></script>
+  <script src="./hello_spec.js"></script>
+
+
+</head>
+
+<body style="background-color:#afaaa8">
+  <div id="mocha"></div>
+
+  <script>
+    mocha.run()
+  </script>
+</body>
+
+</html>
