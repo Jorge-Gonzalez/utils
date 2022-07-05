@@ -5,6 +5,7 @@
   "exports": {
     ".": "./src/index.js",
     "./base.js": "./src/base.js",
+    "./base.d.ts": "./src/base.d.ts",
     "./extended.js": "./src/extended.js"
   },
   "repository": {
