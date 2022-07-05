@@ -1,2 +1,2 @@
-export * as base from './base'
+export * as base from './base.js'
 export { into, transduce } from './extended.js'

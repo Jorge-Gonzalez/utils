@@ -42,8 +42,6 @@ const wrap = reducer => ({
 
 const isTransformer = xf => !!(typeof xf?.[STEP] === 'function')
 
-
-
 // reducers
 const boolean = {
   [INIT]: Boolean,
@@ -93,7 +91,6 @@ const xAll = predicate => xf => {
     step(acc, x) { l(++c); return predicate(x) ? true : reduced(false) },
   })
 }
-
 
 function distinct(xf) {
   let prev

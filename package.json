@@ -2,11 +2,17 @@
   "name": "utils",
   "type": "module",
   "sideEffects": false,
-  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./base.js": "./src/base.js",
+    "./extended.js": "./src/extended.js"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/Jorge-Gonzalez/utils.git"
   },
+  "author": "Jorge Gonzalez",
+  "license": "ISC",
   "packageManager": "yarn@3.1.1",
   "scripts": {
     "bench": "node ./bench/index.js"

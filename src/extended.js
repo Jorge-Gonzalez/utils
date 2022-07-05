@@ -1,9 +1,13 @@
 import { _all, _any, _aperture, _concat, _slice } from './internal.js'
-import { bind, identity, curry2, curry3, curryN, isArray, isArrayLike, log } from './base.js'
-import { mapPoly } from './base.js'
-import { isTransformer, INIT, STEP, RESULT, VALUE, REDUCED } from './transducers.js'
-// export { transduce } from './transducers.js'
+import { bind, identity, curry2, curry3, curryN, isArray, isArrayLike, log, mapPoly } from './base.js'
 
+const INIT = '@@transducer/init'
+const STEP = '@@transducer/step'
+const RESULT = '@@transducer/result'
+const REDUCED = '@@transducer/reduced'
+const VALUE = '@@transducer/value'
+
+const isTransformer = xf => !!(typeof xf?.[STEP] === 'function')
 
 // const ap = curry2((applyF, applyX) => {
 //   return (

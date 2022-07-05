@@ -1,133 +1,30 @@
 /*!  Utils may be freely distributed under the MIT license. */
-export function _all(fn: Function, lst: Array<any>) {
-  let i = 0, l = lst.length
-  for (; i < l; i++) {
-    if (!fn(lst[i])) {
-      return false
-    }
-  }
-  return true
-}
-
-export function _any(fn: Function, lst: Array<any>) {
-  let i = 0, l = lst.length
-  for (; i < l; i++) {
-    if (fn(lst[i])) { return true }
-  }
-  return false
-}
-
-export function _aperture(n: number, list: Array<any>) {
-  let idx = 0;
-  const limit = list.length - (n - 1);
-  const acc = new Array(limit >= 0 ? limit : 0);
-  while (idx < limit) {
-    acc[idx] = Array.prototype.slice.call(list, idx, idx + n);
-    idx += 1;
-  }
-  return acc;
-}
-
-export function _concat(a = [], b = []) {
-  let al = a.length, bl = b.length, res = Array(al + bl), i = 0, j = 0
-  for (; i < al; i++) { res[i] = a[i] }
-  for (; j < bl; j++, i++) { res[i] = b[j] }
-  return res
-}
-
-export function _includes (e: any, arr: ArrayLike<any>) { return _indexOf(arr, e, 0) >= 0 }
-
-export function _indexOf (list: ArrayLike<any>, a: any, idx: number = 0) {
-  var inf, item;
-  switch (typeof a) {
-    case 'number':
-      if (a === 0) {
-        // manually crawl the list to distinguish between +0 and -0
-        inf = 1 / a;
-        while (idx < list.length) {
-          item = list[idx];
-          if (item === 0 && 1 / item === inf) {
-            return idx;
-          }
-          idx += 1;
-        }
-        return -1;
-      } else if (a !== a) {
-        // NaN
-        while (idx < list.length) {
-          item = list[idx];
-          if (typeof item === 'number' && item !== item) {
-            return idx;
-          }
-          idx += 1;
-        }
-        return -1;
-      }
-      // non-zero numbers can utilise Set
-      return Array.prototype.indexOf.call(list, a, idx);
-
-    // all these types can utilise Set
-    case 'string':
-    case 'boolean':
-    case 'function':
-    case 'undefined':
-      return Array.prototype.indexOf.call(list, a, idx);
-
-    case 'object':
-      if (a === null) {
-        // null can utilise Set
-        return Array.prototype.indexOf.call(list, a, idx);
-      }
-  }
-
-  // anything else not covered above, defer to R.equals
-  while (idx < list.length) {
-    if (equals(list[idx], a)) {
-      return idx;
-    }
-    idx += 1;
-  }
-  return -1;
-}
-
-export function _map(fn: Function, lst: ArrayLike<any>) {
-  let i = 0, l = lst.length, res = Array(l)
-  for (; i < l; i++) {
-    res[i] = fn(lst[i], i, lst)
-  }
-  return res
-}
-
-export function _mapObject(fn: Function, obj: Object) {
-  let keys = Object.keys(obj), l = keys.length, i = 0, res = {}, key
-  obj = Object(obj)
-  for (; i < l; i++) {
-    key = keys[i]
-    res[key] = fn(obj[key], key, obj)
-  }
-  return res
-}
-
-export function _slice(start: number, end: number|undefined, arr: ArrayLike<any>) {
-  return Array.prototype.slice.call(arr, start, end)
-}
-
-
+import { _all, _any, _concat, _map, _mapObject, _slice, _includes, _indexOf } from './internal.js'
 
 const exp = {}
 
+  ;['toLowerCase', 'toUpperCase', 'trim']
+    .forEach(name => (exp[name] = (coll) => coll[name]()))
+
+  ;['concat', 'every', 'filter', 'find', 'findIndex', 'forEach', 'indexOf', 'join', 'map', 'some', 'sort', 'match', 'split']
+    .forEach(name => (exp[name] = curry2((arg, coll) => coll[name](arg), name)))
+
+  ;['reduce', 'reduceRight', 'replace']
+    .forEach(name => (exp[name] = curry3((arg1, arg2, coll) => coll[name](arg1, arg2), name)))
+
+  ;['Arguments', 'Function', 'String', 'Number', 'Date', 'RegExp', 'Error']
+    .forEach(t => (exp['is' + t] = o => Object.prototype.toString.call(o) === '[object ' + t + ']'))
 
 const __ = { '@@functional/placeholder': true }
 
 
-const _add = (a: number, b: number) => a + b
+const _add = (a, b) => a + b
 
 const add = curry2(_add)
 
-const _adjust = (fn: Function, i: number, arr: ArrayLike<any>) => {
-  const l = arr.length, res = _slice(0, undefined, arr)
-  i = i < 0 ? i + l : i
-  return 0 <= i && i < l ? (res[i] = fn(arr[i]), res) : res
+const _adjust = (fn, i, arr) => {
+  const l = arr.length, res = arr.slice()
+  return 0 <= (i < 0 ? i + l : i) < l ? (res[i] = fn(arr[i]), res) : res
 }
 
 const adjust = curry2(_adjust)
@@ -136,11 +33,11 @@ const all = curry2(_all)
 
 const any = curry2(_any)
 
-const _append = (val: any, arr: ArrayLike<any>) => _slice(0, undefined, arr).concat([val])
+const _append = (val, arr) => [...arr, val]
 
 const append = curry2(_append)
 
-function arity(n: number, fn: Function) {
+function arity(n, fn) {
   switch (n) {
     case 0: return function() { return fn.apply(this, arguments) }
     case 1: return function(a0) { return fn.apply(this, arguments) }
@@ -153,13 +50,13 @@ function arity(n: number, fn: Function) {
   }
 }
 
-const arrayFromIterator = (iter: Iterator<any>) => {
+const arrayFromIterator = (iter) => {
   let re = [], next
   while (!(next = iter.next()).done) re.push(next.value)
   return re
 }
 
-const _assoc = (prop: string, val: any, obj: {} | []) => {
+const _assoc = (prop, val, obj) => {
   const res = Number.isInteger(prop) && Array.isArray(obj)
     ? [].concat(obj)
     : cloneObject(obj)
@@ -169,50 +66,50 @@ const _assoc = (prop: string, val: any, obj: {} | []) => {
 
 const assoc = curry3(_assoc)
 
-const _assocPath = (path: string[], val: any, obj: Object) => {
+const _assocPath = (path, val, obj) => {
   if (path.length === 0) {
     return val;
   }
   var prop = path[0];
   if (path.length > 1) {
     var nextObj = (obj != null && typeof obj?.[prop] === 'object') ? obj[prop] : Number.isInteger(path[1]) ? [] : {};
-    val = _assocPath(_slice(1, undefined, path), val, nextObj);
+    val = _assocPath(_slice(1, null, path), val, nextObj);
   }
   return assoc(prop, val, obj);
 }
 
 const assocPath = curry3(_assocPath)
 
-const _bind = (fn: Function, ctx: any) => arity(fn.length, (...args: Array<any>) => fn.apply(ctx, args))
+const _bind = (fn, ctx) => arity(fn.length, (...args) => fn.apply(ctx, args))
 
 const bind = curry2(_bind)
 
-const both = (a: Function, b: Function) => (x: any) => a(x) && b(x)
+const both = (a, b) => (x) => a(x) && b(x)
 
-const cloneArray = (arr: ArrayLike<any>) => _slice(0, arr.length, arr)
+const cloneArray = arr => _slice(arr)
 
-const cloneObject = (obj: Object) => ({ ...obj })
+const cloneObject = obj => ({ ...obj })
 
-const clone = (e: Array<any> | Object) => isArray(e) ? cloneArray(e) : cloneObject(e)
+const clone = e => isArray(e) ? cloneArray(e) : cloneObject(e)
 
 const concat = curry2(_concat)
 
-const _converge = (after: Function, fns: Function[]) => function() {
+const _converge = (after, fns) => function() {
   var args = arguments
   var ctx = this
-  return after.apply(ctx, map(function(fn: Function) {
+  return after.apply(ctx, map(function(fn) {
     return fn.apply(ctx, args)
   }, fns))
 }
 
 const converge = curry2(_converge)
 
-const complement = (fn: Function) => (...args: Array<any>) => !fn(...args) 
+const complement = fn => (...args) => !fn(...args)
 
-function compose(...funcs: Function[]) {
+function compose(...funcs) {
   if (funcs.length < 2) throw new Error('compose requires at least two arguments')
   var last = funcs.length - 1
-  return arity(funcs[last].length, function(...args: Array<any>) {
+  return arity(funcs[last].length, function(...args) {
     let i = last
     let result = funcs[last].apply(this, args)
     while (i--) result = funcs[i].call(this, result)
@@ -220,11 +117,11 @@ function compose(...funcs: Function[]) {
   })
 }
 
-const _count = (fn: Function, arr: ArrayLike<any>) => _reduce((c: number, v: any) => fn(v) ? ++c : c, 0, arr)
+const _count = (fn, arr) => _reduce((c, v) => fn(v) ? ++c : c, 0, arr)
 
 const count = curry2(_count)
 
-const _chunk = (size: number, arr: ArrayLike<any>) => {
+const _chunk = (size, arr) => {
   if (size <= 0) throw Error('chunk size must be positive')
   let res = [], i = 0,
     j = 0, l = arr.length
@@ -234,36 +131,36 @@ const _chunk = (size: number, arr: ArrayLike<any>) => {
 
 const chunk = curry2(_chunk)
 
-const curry = (fn: Function, n: number) => curryN(n || fn.length, fn)
+const curry = (fn, n) => curryN(n || fn.length, fn)
 
-function curry2(fn: Function) {
-  return function f2(a: any, b: any) {
+function curry2(fn) {
+  return function f2(a, b) {
     return arguments.length === 1 ?
-      function f1(_b: any) { return fn(a, _b) } :
+      function f1(_b) { return fn(a, _b) } :
       fn(a, b)
   }
 }
 
-function curry3(fn: Function) {
-  return function f3(a: any, b: any, c: any) {
+function curry3(fn) {
+  return function f3(a, b, c) {
     switch (arguments.length) {
       case 1:
-        return curry2(function(_b: any, _c: any) { return fn(a, _b, _c) })
+        return curry2(function(_b, _c) { return fn(a, _b, _c) })
       case 2:
-        return function f1(_c: any) { return fn(a, b, _c) }
+        return function f1(_c) { return fn(a, b, _c) }
       default:
         return fn(a, b, c)
     }
   }
 }
 
-function _curryN(length: number, stored: Array<any>, fn: Function) {
-  return function(...coming: Array<any>) {
+function _curryN(length, stored, fn) {
+  return function(...coming) {
     let i = 0,
       j = 0,
       storedLen = stored.length,
       comingLen = coming.length,
-      combined: Array<any> = [],
+      combined = [],
       left = length,
       curr
 
@@ -328,33 +225,46 @@ function _curryN(length: number, stored: Array<any>, fn: Function) {
 //   };
 // }
 
-const curryN = curry2((length: number, fn: Function) => arity(length, _curryN(length, [], fn)))
+const curryN = curry2((length, fn) => arity(length, _curryN(length, [], fn)))
 
-const _defaultTo = (d: any, v: any) => v == null || v !== v ? d : v
+function _debounce (ms, fn) {
+  let timer
+  return (...args) => {
+    clearTimeout(timer)
+    timer = setTimeout(() => {
+      timer = void 0
+      fn(...args)
+    }, ms)
+  };
+}
+
+const debounce = curry2(_debounce)
+
+const _defaultTo = (d, v) => v == null || v !== v ? d : v
 
 const defaultTo = curry2(_defaultTo)
 
-const _divide = (a: number, b: number) => a / b
+const _divide = (a, b) => a / b
 
 const divide = curry2(_divide)
 
-const _drop = (n: number, arr: ArrayLike<any>) => _slice(n, null, arr)
+const _drop = (n, arr) => _slice(n, null, arr)
 
 const drop = curry2(_drop)
 
-const _dropWhile = (fn: Function, arr: ArrayLike<any>) => {
+const _dropWhile = (fn, arr) => {
   let i = 0, len = arr.length
   while (i < len && fn(arr[i])) i++
-  return _slice(i, undefined, arr)
+  return _slice(i, null, arr)
 }
 
 const dropWhile = curry2(_dropWhile)
 
-const _dropLast = (n: number, arr: ArrayLike<any>) => _slice(0, -n, arr)
+const _dropLast = (n, arr) => _slice(0, -n, arr)
 
 const dropLast = curry2(_dropLast)
 
-const _dropLastWhile = (fn: Function, arr: ArrayLike<any>) => {
+const _dropLastWhile = (fn, arr) => {
   let i = arr.length - 1
 
   while (i >= 0 && fn(arr[i])) i--
@@ -364,7 +274,7 @@ const _dropLastWhile = (fn: Function, arr: ArrayLike<any>) => {
 
 const dropLastWhile = curry2(_dropLastWhile)
 
-const _either = (f: Function, g: Function) => isFunction(f) ? (...args) => f(...args) || g(...args) : lift(or)(f, g)
+const _either = (f, g) => isFunction(f) ? (...args) => f(...args) || g(...args) : lift(or)(f, g)
 
 const either = curry2(_either)
 
@@ -390,15 +300,13 @@ const equals = curry2(eq)
 
 // every
 
-const _fill = (val: any, arr: ArrayLike<any>) => Array.prototype.fill(arr, val)
+const _fill = (val, arr) => arr.fill(val)
 
 const fill = curry2(_fill)
 
-const _filterObject = (pred: Function, obj: Object) => Object.keys(obj).reduce((acc, key) => pred(obj[key], key, obj) ? (acc[key] = obj[key], acc) : acc, {})
+const _filterObject = (pred, obj) => Object.keys(obj).reduce((acc, key) => pred(obj[key], key, obj) ? (acc[key] = obj[key], acc) : acc, {})
 
-type Predicate = (v: any) => Boolean
-
-function _filter(pred: Predicate, arr: ArrayLike<any>) {
+function _filter(pred, arr) {
   return _reduce((acc, e) => pred(e) ? [...acc, e] : acc, [], arr)
   // let res = [], i = 0, l = arr.length
   // for (; i < l; i++) { if (pred(v)) res[res.length] = v }
@@ -407,18 +315,18 @@ function _filter(pred: Predicate, arr: ArrayLike<any>) {
 
 const filter = curry2((f, e) => isArray(e) ? _filter(f, e) : _filterObject(f, e), 'filter')
 
-const _findIndexes = (fn: Function, arr) => _reduce((acc, v, i) => fn(v) ? (acc.push(i), acc) : acc, [], arr)
+const _findIndexes = (fn, arr) => _reduce((acc, v, i) => fn(v) ? (acc.push(i), acc) : acc, [], arr)
 
 const findIndexes = curry2(_findIndexes)
 
-const _findLast = (fn: Function, arr) => {
+const _findLast = (fn, arr) => {
   let i = arr.length
   while (--i >= 0) if (fn(arr[i])) return arr[i]
 }
 
 const findLast = curry2(_findLast)
 
-const _findLastIndex = (fn: Function, arr) => {
+const _findLastIndex = (fn, arr) => {
   var i = arr.length
   while (--i >= 0) if (fn(arr[i])) return i
   return -1
@@ -430,7 +338,7 @@ const flatten = (arr, res = []) => reduce((acc, val) => isArray(val) ? flatten(v
 
 const flip = f => curry2((a, b, ...rest) => f(b, a, ...rest))
 
-const _forEachObject = (fn: Function, obj) => Object.keys(obj).forEach(key => { fn(obj[key], key, obj) })
+const _forEachObject = (fn, obj) => Object.keys(obj).forEach(key => { fn(obj[key], key, obj) })
 
 function _forEach(f, arr) {
   // return [...Array(arr.length)].map((_,i) => f(arr[i])
@@ -478,7 +386,7 @@ function _intersects(source, target) {
 
 const intersects = curry2(_intersects)
 
-const _includesWith = (fn: Function, x, arr) => {
+const _includesWith = (fn, x, arr) => {
   let i = -1, l = arr.length
   while (++i < l) if (fn(x, arr[i])) return true
   return false
@@ -517,7 +425,7 @@ const isPlaceholder = a => a != null && a['@@functional/placeholder'] === true
 
 // join
 
-const juxt = (fns: Function[]) => converge(function() { return _slice(0, null, arguments) }, fns)
+const juxt = (fns) => converge(function() { return _slice(0, null, arguments) }, fns)
 
 
 const keys = obj => Object.keys(obj)
@@ -542,9 +450,9 @@ const _lte = (a, b) => a <= b
 
 const lte = curry2(_lte)
 
-const lift = (fn: Function) => liftN(fn.length, fn)
+const lift = (fn) => liftN(fn.length, fn)
 
-const _liftN = function liftN(arity, fn: Function) {
+const _liftN = function liftN(arity, fn) {
   var lifted = curryN(arity, fn)
   return curryN(arity, function() {
     return _arrayReduce(ap, map(lifted, arguments[0]), _slice(arguments, 1))
@@ -555,7 +463,7 @@ const liftN = curry2(_liftN)
 
 const log = x => (console.log(x), x)
 
-const mapPoly = (fn: Function, seq) => {
+const mapPoly = (fn, seq) => {
   switch (Object.prototype.toString.call(seq)) {
     case '[object Function]':
       return curryN(seq.length, function() {
@@ -588,7 +496,7 @@ const median = (arr) => {
 
 // match
 
-const memoize = (fn: Function, hasher, cache = {}) => arity(fn.length, function(key) {
+const memoize = (fn, hasher, cache = {}) => arity(fn.length, function(key) {
   let address = '' + (hasher ? hasher(arguments) : key)
   if (!_has(address, cache)) cache[address] = fn.apply(this, arguments)
   return cache[address]
@@ -602,11 +510,11 @@ const _mergeByIndexes = (idxs, update, base) => reduce((a, v, i) => (a[(idxs[i] 
 
 const mergeByIndexes = curry3(_mergeByIndexes)
 
-const _mergeWith = (fn: Function, l, r) => mergeWithKey((_, _l, _r) => fn(_l, _r), l, r)
+const _mergeWith = (fn, l, r) => mergeWithKey((_, _l, _r) => fn(_l, _r), l, r)
 
 const mergeWith = curry3(_mergeWith)
 
-const _mergeWithKey = (fn: Function, l = {}, r = {}) => {
+const _mergeWithKey = (fn, l = {}, r = {}) => {
   var res = {}, k
   for (k in l) if (_has(k, l)) res[k] = _has(k, r) ? fn(k, l[k], r[k]) : l[k]
   for (k in r) if (_has(k, r) && !(_has(k, res))) res[k] = r[k]
@@ -615,11 +523,11 @@ const _mergeWithKey = (fn: Function, l = {}, r = {}) => {
 
 const mergeWithKey = curry3(_mergeWithKey)
 
-const _min = (a: number, b: number) => b < a ? b : a
+const _min = (a, b) => b < a ? b : a
 
 const min = curry2(_min)
 
-const _multiply = (a: number, b: number) => a * b
+const _multiply = (a, b) => a * b
 
 const multiply = curry2(_multiply)
 
@@ -627,13 +535,13 @@ const _none = complement(any)
 
 const none = curry2(_none)
 
-const not = (v: boolean) => !v
+const not = v => !v
 
-const _nth = (i: number, arr: Array<any>) => arr?.[i]
+const _nth = (i, arr) => arr?.[i]
 
 const nth = curry2(_nth)
 
-const _o = (g: Function, f: Function, x: any) => g(f(x))
+const _o = (g, f, x) => g(f(x))
 
 const o = curry3(_o)
 
@@ -658,7 +566,7 @@ const _pick = (keys, obj) => reduce((acc, key) => key in obj ? (acc[key] = obj[k
 const pick = curry2(_pick)
 
 
-function pipe(fst: Function, ...funcs: Function[]) {
+function pipe(fst, ...funcs) {
   if (!funcs.length) throw new Error('pipe requires at least two arguments')
   let len = funcs.length
   return arity(fst.length, function(...args) {
@@ -669,7 +577,7 @@ function pipe(fst: Function, ...funcs: Function[]) {
   })
 }
 
-const _prepend = (v: any, arr: Array<any>) => _concat([v], arr)
+const _prepend = (v, arr) => _concat([v], arr)
 
 // const _prepend = (val, arr) => {
 //   let i = -1,
@@ -719,7 +627,7 @@ const _range = (start, end) => Array(end - start).fill(1).map((_, i) => i + star
 
 const range = curry2(_range)
 
-const _reduceObject = (fn: Function, init, obj) => Object.keys(obj).reduce((acc, key) => fn(acc, obj[key], key, obj), init)
+const _reduceObject = (fn, init, obj) => Object.keys(obj).reduce((acc, key) => fn(acc, obj[key], key, obj), init)
 
 // const _reduceObject = (fn, init, obj) => {
 //   let keys = Object.keys(obj),
@@ -743,7 +651,7 @@ function _reduceIterable(reducer, acc, iter) {
   return acc
 }
 
-function _reduce(fn: Function, init, arr) {
+function _reduce(fn, init, arr) {
   return Array.prototype.reduce.call(arr, fn, init)
 }
 
@@ -756,13 +664,13 @@ function _reduce(fn: Function, init, arr) {
 //   return res
 // }
 
-const reduce = curry3((fn: Function, ini, e) =>
+const reduce = curry3((fn, ini, e) =>
   isArrayLike(e) ? _reduce(fn, ini, e) :
     isIterable(e) ? _reduceIterable(fn, ini, e) :
-      _reduceObject(fn, ini, e))
+      _reduceObject(fn, ini, e), 'reduce')
 
 
-const _reduceRightObject = (fn: Function, init, obj) => obj.keys.reduceRight((acc, key) => fn(acc, obj[key], key, obj), init)
+const _reduceRightObject = (fn, init, obj) => obj.keys.reduceRight((acc, key) => fn(acc, obj[key], key, obj), init)
 
 // const reduceRightObject = (fn, init, obj) => {
 //   let keys = Object.keys(obj),
@@ -778,11 +686,11 @@ const _reduceRightObject = (fn: Function, init, obj) => obj.keys.reduceRight((ac
 //   return res
 // }
 
-const _reduceRight = (fn: Function, init, arr) => Array.prototype.reduceRight.call(arr, fn, init)
+const _reduceRight = (fn, init, arr) => Array.prototype.reduceRight.call(arr, fn, init)
 
 const reduceRight = curry3((f, ini, e) => isArrayLike(e) ? _reduceRight(f, ini, e) : _reduceRightObject(f, ini, e))
 
-const _reject = (fn: Function, arr) => filter(complement(fn), arr)
+const _reject = (fn, arr) => filter(complement(fn), arr)
 
 const reject = curry2(_reject)
 
@@ -796,7 +704,7 @@ const reverse = arr => cloneArray(arr).reverse()
 //   return res
 // }
 
-const _scan = (fn: Function, acc, arr) => {
+const _scan = (fn, acc, arr) => {
   let i = -1
   const len = arr.length
   const res = [acc]
@@ -813,7 +721,7 @@ const slice = curry3(_slice)
 
 // sort
 
-const _sortBy = (fn: Function, arr) => cloneArray(arr).sort((a, b) => (a = fn(a), b = fn(b), a < b) ? -1 : a > b ? 1 : 0)
+const _sortBy = (fn, arr) => cloneArray(arr).sort((a, b) => (a = fn(a), b = fn(b), a < b) ? -1 : a > b ? 1 : 0)
 
 const sortBy = curry2(_sortBy)
 
@@ -835,7 +743,7 @@ const _take = (i, arr) => _slice(0, i, arr)
 
 const take = curry2(_take)
 
-const _takeWhile = (fn: Function, arr) => {
+const _takeWhile = (fn, arr) => {
   let l = arr.length,
     i = -1, res = []
 
@@ -949,17 +857,17 @@ function toString(val) { return _toString(val, []) }
 
 const truty = () => true
 
-// const type = a => Object.prototype.toString.call(a).slice(8, -1)
+const type = a => Object.prototype.toString.call(a).slice(8, -1)
 
-const uniq = arr => reduce((acc, val) => !includes(val, acc) ? acc.push(val) && acc : acc, [], arr)
+const uniq = arr => reduce((acc, val) => !_inculdes(val, acc) ? acc.push(val) && acc : acc, [], arr)
 
-const _uniqWith = (fn: Function, arr) => {
+const _uniqWith = (fn, arr) => {
   let i = -1, l = arr.length,
     res = [], val
 
   while (++i < l) {
     val = arr[i]
-    if (!_includesWith(fn, val, res)) res[res.length] = val
+    if (!_inculdesWith(fn, val, res)) res[res.length] = val
   }
 
   return res
@@ -1054,6 +962,7 @@ export {
   curry2,
   curry3,
   curryN,
+  debounce,
   defaultTo,
   divide,
   drop,
